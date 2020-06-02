@@ -1,0 +1,25 @@
+# DO NOT CHANGE THIS FILE!!!
+# CHANGED THIS SCRIPT -> YOUR SUBMISSION IS NOT ACCEPTED
+image: sftlab:latest
+
+build:
+  stage: build
+  tags:
+    - docker
+    - virtual
+  script: make
+  artifacts:
+    paths:
+      - ./*
+    expire_in: 10 mins
+
+test:
+  stage: test
+  tags:
+    - docker
+    - virtual
+  script:
+    - PROJECT=$(pwd) /grader/lab-7-process-pairs/test.sh
+
+# DO NOT CHANGE THIS FILE!!!
+# CHANGED THIS SCRIPT -> YOUR SUBMISSION IS NOT ACCEPTED

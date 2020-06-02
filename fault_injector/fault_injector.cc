@@ -1,26 +1,27 @@
-// fault injector aborts program non deterministically
+/// File:
+/// A fault injector that randomly aborts the program
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <netdb.h>
+#include <assert.h>
+#include <unistd.h>
 
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
-// 
-const double crash_trashhold = 0.025;;
+const double crash_threshold = 0.325;
 
-// do not use the library constructor function -
-// if drand48 is not called before the fork, childs starts
-// with the same seed
-//void init () __attribute__ ((constructor));
+// Do not use the library constructor function because if drand48
+// is not called before the fork, all children will starts
+// with the same seed value
 static void init() {
     struct timespec now;
 
     clock_gettime(CLOCK_REALTIME, &now);
-    seed48((unsigned short *) &now);
+    srand48(time(NULL) ^ (getpid()<<16));
 }
 
 static bool should_abort() {
@@ -29,52 +30,28 @@ static bool should_abort() {
         first = false;
         init();
     }
-    return drand48() < crash_trashhold;
+    return drand48() < crash_threshold;
 }
 
-#define jump_to(func)                                                                 \
-    asm("movl %ebp,%esp");                                                            \
-    asm("popl %ebp");                                                                 \
-    asm("jmp  *libc_" #func);
+typedef int (*socket_type)(int, int, int);
 
-#define resolver(func)                                                                \
-static void unresolved_##func();                                                      \
-__typeof(func)* libc_##func = (__typeof(func)*) unresolved_##func;                    \
-static void unresolved_##func()                                                       \
-{                                                                                     \
-    if (!libc_##func || (__typeof(func)*)unresolved_##func == libc_##func)            \
-    {                                                                                 \
-        libc_##func = (__typeof(func)*)dlsym (RTLD_NEXT, #func);                      \
-        if (NULL == libc_##func)                                                      \
-        {                                                                             \
-            perror ("Could find orignal " #func " function");                         \
-            abort ();                                                                 \
-        }                                                                             \
-    }                                                                                 \
-                                                                                      \
-    jump_to(func)                                                                     \
-}
-
-resolver(socket)
 int socket(int domain, int type, int protocol) {
-    if (should_abort())
-        abort();
-
-    jump_to(socket)
+  static socket_type orig = 0;
+  if (should_abort()) {
+    abort();
+  }
+  if (0 == orig) {
+    orig = (socket_type) dlsym(RTLD_NEXT, "socket");
+    assert (orig && "original socket function not found");
+  }
+  return orig(domain, type, protocol);
 }
 
-resolver(recv)
 ssize_t recv(int s, void *buf, size_t len, int flags) {
-    if (should_abort())
-        abort();
-
-    jump_to(recv)
+  // handle recv fault injection
+  return 0;
 }
-
-resolver(gethostbyname)
 struct hostent *gethostbyname(const char *name) {
-    if (should_abort())
-        abort();
-
-    jump_to(gethostbyname)
+  // handle gethostbyname fault injection
+  return 0;
 }
