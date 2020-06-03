@@ -10,7 +10,7 @@ build:
   script: make
   artifacts:
     paths:
-      - ./*
+      - ./watch_dog
     expire_in: 10 mins
 
 test:
@@ -19,7 +19,7 @@ test:
     - docker
     - virtual
   script:
-    - PROJECT=$(pwd) /grader/lab-7-process-pairs/test.sh
+    - /grader/run_grader.sh $(pwd) lab-7-process-pairs
 
 # DO NOT CHANGE THIS FILE!!!
 # CHANGED THIS SCRIPT -> YOUR SUBMISSION IS NOT ACCEPTED
