@@ -1,12 +1,12 @@
 # DO NOT CHANGE THIS FILE!!!
 # CHANGED THIS SCRIPT -> YOUR SUBMISSION IS NOT ACCEPTED
-image: sftlab:latest
+image: se-gitlab.inf.tu-dresden.de:5001/staff/sft-lab/sft-dev:sftlab
 
 build:
   stage: build
   tags:
     - docker
-    - virtual
+    - many-cores
   script: make
   artifacts:
     paths:
@@ -17,7 +17,7 @@ test:
   stage: test
   tags:
     - docker
-    - virtual
+    - many-cores
   script:
     - /grader/run_grader.sh $(pwd) lab-7-process-pairs
 
