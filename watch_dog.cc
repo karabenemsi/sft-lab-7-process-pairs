@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -25,7 +26,7 @@ const std::string TEST_PREFIX("===> ");  // a prefix for test output, used in te
 /// scoped Socket class
 class Socket {
     int socket;
-  public:
+public:
     /// Constructor:
     /// A Socket is defined by a port number (16 bit), a protocol, and a domain, which
     /// defines a protocol family like ARPA Internet or ISO protocols.
@@ -107,11 +108,11 @@ void test_server(const URL& url, int timeout) {
     timeout_val.tv_usec = (timeout % 1000) * 1000;
     if (0 != setsockopt(http_socket.s(), SOL_SOCKET, SO_SNDTIMEO, &timeout_val, sizeof(timeout_val))
         ||
-            0 != setsockopt(http_socket.s(),
-                            SOL_SOCKET,
-                            SO_RCVTIMEO,
-                            &timeout_val,
-                            sizeof(timeout_val))) {
+        0 != setsockopt(http_socket.s(),
+            SOL_SOCKET,
+            SO_RCVTIMEO,
+            &timeout_val,
+            sizeof(timeout_val))) {
         perror((TEST_PREFIX + "Could set a socket timeout").c_str());
         exit(1);
     }
@@ -141,7 +142,7 @@ void test_server(const URL& url, int timeout) {
     // try to connect
     if (0 != connect(http_socket.s(), (sockaddr*)&host_addr, sizeof(host_addr))) {
         std::cerr << TEST_PREFIX << "Could not connect to host " << url.host <<
-                  "(" << inet_ntoa(host_addr.sin_addr) << ")" << std::endl;
+            "(" << inet_ntoa(host_addr.sin_addr) << ")" << std::endl;
         herror((TEST_PREFIX + "\tReason").c_str());
         return;
     }
@@ -149,7 +150,7 @@ void test_server(const URL& url, int timeout) {
     // write the HTTP GET request
     std::ostringstream request;
     request << "GET " << url.uri << " " << HTTP_VERSION << CRLF <<
-            "host: " << url.host << CRLF << CRLF;
+        "host: " << url.host << CRLF << CRLF;
     std::string request_line(request.str());
 
     // if the length returned by the send operation
@@ -157,7 +158,7 @@ void test_server(const URL& url, int timeout) {
     if (request_line.length() !=
         send(http_socket.s(), request_line.c_str(), request_line.length(), 0)) {
         std::cerr << TEST_PREFIX << "Could not send a request to host " << url.host <<
-                  "(" << inet_ntoa(host_addr.sin_addr) << ")" << std::endl;
+            "(" << inet_ntoa(host_addr.sin_addr) << ")" << std::endl;
         perror((TEST_PREFIX + "\tReason").c_str());
         return;
     }
@@ -170,7 +171,7 @@ void test_server(const URL& url, int timeout) {
         int recv_length = recv(http_socket.s(), recv_buf, recv_buf_size, 0);
         if (-1 == recv_length) {
             std::cerr << TEST_PREFIX << "Could not receive a response from host " << url.host <<
-                      "(" << inet_ntoa(host_addr.sin_addr) << ")" << std::endl;
+                "(" << inet_ntoa(host_addr.sin_addr) << ")" << std::endl;
             perror((TEST_PREFIX + "\tReason").c_str());
             return;
         }
@@ -188,7 +189,7 @@ void test_server(const URL& url, int timeout) {
         end = response_line.find(' ', start + 1);
     if (std::string::npos == start || std::string::npos == end) {
         std::cerr << "Could not parse a response from host " << url.host <<
-                  "(" << inet_ntoa(host_addr.sin_addr) << ")" << std::endl;
+            "(" << inet_ntoa(host_addr.sin_addr) << ")" << std::endl;
         perror("\tReason");
         return;
     }
@@ -198,23 +199,23 @@ void test_server(const URL& url, int timeout) {
     // else error
     if (atoi(status_code.c_str()) / 100 != 2) {
         std::cerr << TEST_PREFIX << "Host " << url.host << "(" << inet_ntoa(host_addr.sin_addr)
-                  << ")" <<
-                  " does not respond with \"success\"" << std::endl;
+            << ")" <<
+            " does not respond with \"success\"" << std::endl;
         std::cerr << TEST_PREFIX << "\tresponse line: " << response_line << std::endl;
         return;
     } else
         std::cout << TEST_PREFIX << "Successful response from host " << url.host <<
-                  "(" << inet_ntoa(host_addr.sin_addr) << "): " <<
-                  response_line << std::endl;
+        "(" << inet_ntoa(host_addr.sin_addr) << "): " <<
+        response_line << std::endl;
 }
 
 void usage(const char* err_msg = 0) {
     if (0 != err_msg)
         std::cerr << "Error: " << err_msg << std::endl;
     std::cout << "Usage: watch_dog <url_file> <timeout> <pause>" << std::endl <<
-              "\t<url_file>: a text file with urls to monitor (one per line)" << std::endl <<
-              "\t<timeout>: timeout for requests to the server, in ms" << std::endl <<
-              "\t<pause>: pause before starting the next request, in ms" << std::endl;
+        "\t<url_file>: a text file with urls to monitor (one per line)" << std::endl <<
+        "\t<timeout>: timeout for requests to the server, in ms" << std::endl <<
+        "\t<pause>: pause before starting the next request, in ms" << std::endl;
     exit(1);
 }
 
@@ -242,8 +243,8 @@ int main(const int argc, const char** argv) {
     int timeout = atoi(argv[2]);
     int pause = atoi(argv[3]);
     std::cout << "URL file = " << url_file << std::endl <<
-              "timeout = " << timeout << " ms" << std::endl <<
-              "pause = " << pause << " ms" << std::endl;
+        "timeout = " << timeout << " ms" << std::endl <<
+        "pause = " << pause << " ms" << std::endl;
 
     // read URL list from file
     URL_list url_list = read_url_list(url_file);
@@ -253,14 +254,54 @@ int main(const int argc, const char** argv) {
         std::cout << "host = " << (i->host) << "; uri = " << (i->uri) << std::endl;
     }
 
-    // start watch dog survey
+    
+
+    pid_t w, pid;
+    int status;
+
     while (true) {
-        for (URL_list::iterator i = url_list.begin(); i != url_list.end(); i++) {
-            test_server(*i, timeout);
-            usleep(pause * 1000);
+        // fork
+        pid = fork();
+        // If fork failed or child process, run worker
+        if (pid <= 0) {
+            // child process
+            // start watch dog survey
+            int checkpoint = read_checkpoint();
+            while (true) {
+                for (URL_list::iterator i = url_list.begin() + checkpoint; i != url_list.end(); i++) {
+                    test_server(*i, timeout);
+                    usleep(pause * 1000);
+                    checkpoint = i - url_list.begin() + 1;
+                    save_checkpoint(checkpoint);
+                }
+                checkpoint = 0;
+                save_checkpoint(checkpoint);
+            }
+
+            return 0;
+        } else if (pid > 0) {
+            // parent process
+            // wait for child process to crash
+            do {
+                w = waitpid(pid, &status, WUNTRACED | WCONTINUED);
+                if (w == -1) {
+                    perror("waitpid");
+                    exit(EXIT_FAILURE);
+                }
+
+                if (WIFEXITED(status)) {
+                    printf("exited, status=%d\n", WEXITSTATUS(status));
+                } else if (WIFSIGNALED(status)) {
+                    printf("killed by signal %d\n", WTERMSIG(status));
+                } else if (WIFSTOPPED(status)) {
+                    printf("stopped by signal %d\n", WSTOPSIG(status));
+                } else if (WIFCONTINUED(status)) {
+                    printf("continued\n");
+                }
+            } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+            continue;
         }
     }
-
     // unreachable
     return 0;
 }
