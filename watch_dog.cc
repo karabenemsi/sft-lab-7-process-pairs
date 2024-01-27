@@ -218,6 +218,22 @@ void usage(const char* err_msg = 0) {
     exit(1);
 }
 
+void save_checkpoint(int checkpoint) {
+    std::ofstream checkpoint_file("checkpoint");
+    checkpoint_file << checkpoint;
+    checkpoint_file.close();
+}
+
+int read_checkpoint() {
+    int checkpoint = 0;
+    std::ifstream checkpoint_file("checkpoint");
+    if (checkpoint_file.is_open()) {
+        checkpoint_file >> checkpoint;
+        checkpoint_file.close();
+    }
+    return checkpoint;
+}
+
 int main(const int argc, const char** argv) {
     if (argc < 4)
         usage("Wrong number of command line arguments");
