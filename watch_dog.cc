@@ -56,7 +56,7 @@ struct URL {
 typedef std::vector<URL> URL_list;
 
 // Reads URLs from a file and stores in std::vector
-URL_list read_url_list(const std::string &url_file_name) {
+URL_list read_url_list(const std::string& url_file_name) {
     // the file name should be a command line argument
     std::ifstream url_file(url_file_name.c_str());
 
@@ -93,7 +93,7 @@ URL_list read_url_list(const std::string &url_file_name) {
     return url_list;
 }
 
-void test_server(const URL &url, int timeout) {
+void test_server(const URL& url, int timeout) {
     // open socket as scoped object
     Socket http_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (-1 == http_socket.s()) {
@@ -117,7 +117,7 @@ void test_server(const URL &url, int timeout) {
     }
 
     // retrieve host IP address
-    struct hostent *hostinfo;
+    struct hostent* hostinfo;
     struct sockaddr_in host_addr;
     memset(&host_addr, 0, sizeof(host_addr));
 
@@ -139,7 +139,7 @@ void test_server(const URL &url, int timeout) {
     host_addr.sin_port = htons(HTTP_PORT);
 
     // try to connect
-    if (0 != connect(http_socket.s(), (sockaddr *) &host_addr, sizeof(host_addr))) {
+    if (0 != connect(http_socket.s(), (sockaddr*)&host_addr, sizeof(host_addr))) {
         std::cerr << TEST_PREFIX << "Could not connect to host " << url.host <<
                   "(" << inet_ntoa(host_addr.sin_addr) << ")" << std::endl;
         herror((TEST_PREFIX + "\tReason").c_str());
@@ -208,7 +208,7 @@ void test_server(const URL &url, int timeout) {
                   response_line << std::endl;
 }
 
-void usage(const char *err_msg = 0) {
+void usage(const char* err_msg = 0) {
     if (0 != err_msg)
         std::cerr << "Error: " << err_msg << std::endl;
     std::cout << "Usage: watch_dog <url_file> <timeout> <pause>" << std::endl <<
@@ -218,7 +218,7 @@ void usage(const char *err_msg = 0) {
     exit(1);
 }
 
-int main(const int argc, const char **argv) {
+int main(const int argc, const char** argv) {
     if (argc < 4)
         usage("Wrong number of command line arguments");
 
